@@ -1,0 +1,19 @@
+# This defines the shape of our QueryHistory data
+type QueryHistory {
+    id: ID!
+    naturalLanguageQuery: String!
+    generatedSql: String!
+    executionTimeMs: Int
+    createdAt: String!
+}
+
+# This defines the queries (read operations) our API supports
+type Query {
+    allQueryHistory: [QueryHistory]
+}
+
+# This defines the mutations (write operations) our API supports
+type Mutation {
+    # We will implement this later
+    submitQuery(naturalLanguageQuery: String!): QueryHistory
+}

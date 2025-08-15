@@ -1,0 +1,80 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.4'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id "com.github.node-gradle.node" version "7.0.2"
+}
+
+group = 'org.project.alakazam'
+version = '0.0.1-SNAPSHOT'
+description = 'Project-Alakazam'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-graphql'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    compileOnly 'org.projectlombok:lombok'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    runtimeOnly 'org.postgresql:postgresql'
+    annotationProcessor 'org.projectlombok:lombok'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.graphql:spring-graphql-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// Configure the Node.js plugin
+node {
+    // Version of Node.js to use. The plugin will download and install it.
+    version = '20.11.1'
+    // Version of npm to use.
+    npmVersion = '10.2.4'
+    // Set the work directory where package.json is located
+    workDir = file("${project.projectDir}/frontend")
+    // Set the npm install command
+    npmInstallCommand = 'install'
+    // Where to download Node.js
+    download = true
+}
+
+// Task to run 'npm run build'
+tasks.register('buildFrontend', NpmTask) {
+    // This makes the npm build command run after npm install has finished
+    dependsOn 'npmInstall'
+    // The actual command to run, defined in package.json
+    args = ['run', 'build']
+}
+
+// Task to copy the static files from the frontend 'out' directory
+// into the Spring Boot 'static' resources directory.
+tasks.register('copyFrontendFiles', Copy) {
+    // This makes the copy task run after the frontend build is complete
+    dependsOn 'buildFrontend'
+    // Source directory is the Next.js build output
+    from "$projectDir/frontend/out"
+    // Destination directory is where Spring Boot serves static files from
+    into "$buildDir/resources/main/static"
+}
+
+// Hook our copy task into the standard 'processResources' task.
+// This ensures our UI is ready before the JAR is packaged.
+processResources.dependsOn 'copyFrontendFiles'
