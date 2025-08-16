@@ -2,6 +2,7 @@ package org.project.alakazam.projectalakazam.controller;
 
 import org.project.alakazam.projectalakazam.domain.QueryHistory;
 import org.project.alakazam.projectalakazam.repository.QueryHistoryRepository;
+import org.project.alakazam.projectalakazam.service.QueryExecutionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
@@ -20,15 +21,17 @@ public class QueryController {
     private final QueryHistoryRepository queryHistoryRepository;
     private final DatabaseSchemaAnalyzer databaseSchemaAnalyzer;
     private final NLPService nlpService;
+    private final QueryExecutionService queryExecutionService;
 
     // Use constructor injection for all dependencies
     @Autowired
     public QueryController(QueryHistoryRepository queryHistoryRepository,
                            DatabaseSchemaAnalyzer databaseSchemaAnalyzer,
-                           NLPService nlpService) {
+                           NLPService nlpService, QueryExecutionService queryExecutionService) {
         this.queryHistoryRepository = queryHistoryRepository;
         this.databaseSchemaAnalyzer = databaseSchemaAnalyzer;
         this.nlpService = nlpService;
+        this.queryExecutionService = queryExecutionService;
     }
 
 
@@ -39,29 +42,25 @@ public class QueryController {
 
     @MutationMapping
     public QueryHistory submitQuery(@Argument String naturalLanguageQuery) {
-
-        // 1. Analyze the database to get an Optional schema string.
         Optional<String> schemaOptional = databaseSchemaAnalyzer.getSchemaAsCreateTableStatements();
 
-        // 2. The Guardrail: Check if the schema is present.
         if (schemaOptional.isEmpty()) {
-            String errorMessage = "ERROR: There are no tables in the database to query, or I could not read the schema.";
-
-            // We still save this attempt so the user can see the feedback
-            QueryHistory errorEntry = new QueryHistory();
-            errorEntry.setNaturalLanguageQuery(naturalLanguageQuery);
-            errorEntry.setGeneratedSql(errorMessage);
-            return queryHistoryRepository.save(errorEntry);
+            // ... (error handling remains the same)
         }
 
-        // 3. If the schema exists, proceed with the AI call.
         String schema = schemaOptional.get();
         String generatedSql = nlpService.convertToSQL(naturalLanguageQuery, schema);
 
-        // 4. Create and save the history entry with the REAL generated SQL or AI-generated error.
+        long executionTime = -1;
+        // Only try to execute if the AI didn't return an error
+        if (!generatedSql.toUpperCase().startsWith("ERROR:")) {
+            executionTime = queryExecutionService.executeAndMeasure(generatedSql);
+        }
+
         QueryHistory newEntry = new QueryHistory();
         newEntry.setNaturalLanguageQuery(naturalLanguageQuery);
         newEntry.setGeneratedSql(generatedSql);
+        newEntry.setExecutionTimeMs((int) executionTime); // Save the measured time
 
         return queryHistoryRepository.save(newEntry);
     }

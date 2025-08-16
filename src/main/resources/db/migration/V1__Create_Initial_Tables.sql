@@ -3,7 +3,7 @@ CREATE TABLE query_history (
                                id UUID PRIMARY KEY,
                                natural_language_query TEXT NOT NULL,
                                generated_sql TEXT NOT NULL,
-                               execution_time_ms INTEGER,
+                               execution_time_ms INTEGER, -- ALREADY INCLUDED FROM THE START
                                created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
 );
 

@@ -1,5 +1,6 @@
 package org.project.alakazam.projectalakazam.domain;
 
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -27,9 +28,13 @@ public class QueryHistory {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String generatedSql;
 
+    // --- ADD THE FIELD BELOW ---
+    @Column(name = "execution_time_ms")
     private Integer executionTimeMs;
+    // --- END OF ADDITION ---
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
+
 }
