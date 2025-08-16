@@ -36,6 +36,7 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.graphql:spring-graphql-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
 }
 
 tasks.named('test') {
@@ -56,11 +57,13 @@ node {
     download = true
 }
 
-// Task to run 'npm run build'
+// NEW, CORRECTED VERSION
 tasks.register('buildFrontend', NpmTask) {
-    // This makes the npm build command run after npm install has finished
+    // This is the crucial line you need to add.
+    // It tells this specific task to run inside the /frontend directory.
+    workingDir = file("${project.projectDir}/frontend")
+
     dependsOn 'npmInstall'
-    // The actual command to run, defined in package.json
     args = ['run', 'build']
 }
 

@@ -9,25 +9,56 @@ import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
 
 import java.util.List;
+import java.util.Optional;
+
+import org.project.alakazam.projectalakazam.service.DatabaseSchemaAnalyzer;
+import org.project.alakazam.projectalakazam.service.NLPService;
 
 @Controller
 public class QueryController {
 
-    @Autowired
-    private QueryHistoryRepository queryHistoryRepository;
+    private final QueryHistoryRepository queryHistoryRepository;
+    private final DatabaseSchemaAnalyzer databaseSchemaAnalyzer;
+    private final NLPService nlpService;
 
-    // This method handles the "allQueryHistory" query defined in our schema
+    // Use constructor injection for all dependencies
+    @Autowired
+    public QueryController(QueryHistoryRepository queryHistoryRepository,
+                           DatabaseSchemaAnalyzer databaseSchemaAnalyzer,
+                           NLPService nlpService) {
+        this.queryHistoryRepository = queryHistoryRepository;
+        this.databaseSchemaAnalyzer = databaseSchemaAnalyzer;
+        this.nlpService = nlpService;
+    }
+
+
     @QueryMapping
     public List<QueryHistory> allQueryHistory() {
         return queryHistoryRepository.findAll();
     }
 
-    // This method handles the "submitQuery" mutation
     @MutationMapping
     public QueryHistory submitQuery(@Argument String naturalLanguageQuery) {
-        // For now, the NLP logic is just a placeholder
-        String generatedSql = "SELECT * FROM users WHERE name = 'a_placeholder';";
 
+        // 1. Analyze the database to get an Optional schema string.
+        Optional<String> schemaOptional = databaseSchemaAnalyzer.getSchemaAsCreateTableStatements();
+
+        // 2. The Guardrail: Check if the schema is present.
+        if (schemaOptional.isEmpty()) {
+            String errorMessage = "ERROR: There are no tables in the database to query, or I could not read the schema.";
+
+            // We still save this attempt so the user can see the feedback
+            QueryHistory errorEntry = new QueryHistory();
+            errorEntry.setNaturalLanguageQuery(naturalLanguageQuery);
+            errorEntry.setGeneratedSql(errorMessage);
+            return queryHistoryRepository.save(errorEntry);
+        }
+
+        // 3. If the schema exists, proceed with the AI call.
+        String schema = schemaOptional.get();
+        String generatedSql = nlpService.convertToSQL(naturalLanguageQuery, schema);
+
+        // 4. Create and save the history entry with the REAL generated SQL or AI-generated error.
         QueryHistory newEntry = new QueryHistory();
         newEntry.setNaturalLanguageQuery(naturalLanguageQuery);
         newEntry.setGeneratedSql(generatedSql);
