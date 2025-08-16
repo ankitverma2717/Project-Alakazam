@@ -1,0 +1,25 @@
+spring.application.name=Project-Alakazam
+
+# PostgreSQL Database Connection Settings
+spring.datasource.url=jdbc:postgresql://localhost:5432/alakazam
+spring.datasource.username=postgres
+spring.datasource.password=alakazam@2717
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+# JPA/Hibernate Settings
+# Using Flyway for database migrations, so disable Hibernate's automatic schema generation
+spring.jpa.hibernate.ddl-auto=validate
+
+# GraphQL Settings
+# Enable the GraphQL UI for easy API testing in your browser
+spring.graphql.graphiql.enabled=true
+
+# Google Gemini API Configuration
+# IMPORTANT: Create an application.properties file and paste your real key there.
+app.gemini.api.key=PASTE_YOUR_GEMINI_API_KEY_HERE
+app.gemini.api.url=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
+
+# Flyway Configuration
+spring.flyway.baseline-on-migrate=true
+spring.flyway.locations=classpath:db/migration
+spring.flyway.clean-disabled=false
