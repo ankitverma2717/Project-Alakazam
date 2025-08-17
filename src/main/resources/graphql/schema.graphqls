@@ -4,6 +4,7 @@ type QueryHistory {
     naturalLanguageQuery: String!
     generatedSql: String!
     executionTimeMs: Int
+    predictedPerformance: String
     createdAt: String!
 }
 

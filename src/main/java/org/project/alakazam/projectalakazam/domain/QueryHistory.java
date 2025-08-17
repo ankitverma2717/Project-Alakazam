@@ -28,10 +28,11 @@ public class QueryHistory {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String generatedSql;
 
-    // --- ADD THE FIELD BELOW ---
     @Column(name = "execution_time_ms")
     private Integer executionTimeMs;
-    // --- END OF ADDITION ---
+
+    @Column(name = "predicted_performance")
+    private String predictedPerformance;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)

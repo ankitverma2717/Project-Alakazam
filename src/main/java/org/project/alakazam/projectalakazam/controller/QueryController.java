@@ -5,6 +5,7 @@ import org.project.alakazam.projectalakazam.domain.QueryHistory;
 import org.project.alakazam.projectalakazam.repository.IndexSuggestionRepository;
 import org.project.alakazam.projectalakazam.repository.QueryHistoryRepository;
 import org.project.alakazam.projectalakazam.service.QueryExecutionService;
+import org.project.alakazam.projectalakazam.service.QueryPerformancePredictor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.project.alakazam.projectalakazam.service.DatabaseSchemaAnalyzer;
+import org.project.alakazam.projectalakazam.service.IndexSuggestionEngine;
 import org.project.alakazam.projectalakazam.service.NLPService;
 
 @Controller
@@ -26,18 +28,24 @@ public class QueryController {
     private final NLPService nlpService;
     private final QueryExecutionService queryExecutionService;
     private final IndexSuggestionRepository indexSuggestionRepository;
+    private final IndexSuggestionEngine indexSuggestionEngine;
+    private final QueryPerformancePredictor queryPerformancePredictor;
 
     // Use constructor injection for all dependencies
     @Autowired
     public QueryController(QueryHistoryRepository queryHistoryRepository,
                            DatabaseSchemaAnalyzer databaseSchemaAnalyzer,
                            NLPService nlpService, QueryExecutionService queryExecutionService,
-                           IndexSuggestionRepository indexSuggestionRepository) {
+                           IndexSuggestionRepository indexSuggestionRepository,
+                           IndexSuggestionEngine indexSuggestionEngine,
+                           QueryPerformancePredictor queryPerformancePredictor) {
         this.queryHistoryRepository = queryHistoryRepository;
         this.databaseSchemaAnalyzer = databaseSchemaAnalyzer;
         this.nlpService = nlpService;
         this.queryExecutionService = queryExecutionService;
         this.indexSuggestionRepository = indexSuggestionRepository;
+        this.indexSuggestionEngine = indexSuggestionEngine;
+        this.queryPerformancePredictor = queryPerformancePredictor;
     }
 
 
@@ -58,24 +66,29 @@ public class QueryController {
     @MutationMapping
     public QueryHistory submitQuery(@Argument String naturalLanguageQuery) {
         Optional<String> schemaOptional = databaseSchemaAnalyzer.getSchemaAsCreateTableStatements();
+        QueryHistory newEntry = new QueryHistory();
+        newEntry.setNaturalLanguageQuery(naturalLanguageQuery);
 
         if (schemaOptional.isEmpty()) {
-            // ... (error handling remains the same)
+            String errorMessage = "ERROR: There are no tables in the database to query, or I could not read the schema.";
+            newEntry.setGeneratedSql(errorMessage);
+            return queryHistoryRepository.save(newEntry);
         }
 
         String schema = schemaOptional.get();
         String generatedSql = nlpService.convertToSQL(naturalLanguageQuery, schema);
+        newEntry.setGeneratedSql(generatedSql);
 
         long executionTime = -1;
-        // Only try to execute if the AI didn't return an error
+        String prediction = "N/A";
+
         if (!generatedSql.toUpperCase().startsWith("ERROR:")) {
+            prediction = queryPerformancePredictor.predictPerformance(generatedSql);
             executionTime = queryExecutionService.executeAndMeasure(generatedSql);
         }
 
-        QueryHistory newEntry = new QueryHistory();
-        newEntry.setNaturalLanguageQuery(naturalLanguageQuery);
-        newEntry.setGeneratedSql(generatedSql);
-        newEntry.setExecutionTimeMs((int) executionTime); // Save the measured time
+        newEntry.setPredictedPerformance(prediction);
+        newEntry.setExecutionTimeMs((int) executionTime);
 
         return queryHistoryRepository.save(newEntry);
     }
@@ -84,4 +97,6 @@ public class QueryController {
     public String explainQuery(@Argument String sql) {
         return nlpService.explainSQL(sql);
     }
+
+
 }

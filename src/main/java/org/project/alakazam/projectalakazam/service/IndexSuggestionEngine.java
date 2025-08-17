@@ -25,7 +25,7 @@ public class IndexSuggestionEngine {
     // Regex to find table names and columns within a WHERE clause.
     // It's designed to be simple and capture the most common cases.
     private static final Pattern WHERE_CLAUSE_PATTERN = Pattern.compile(
-            "FROM\\s+(\\w+)|JOIN\\s+(\\w+)|WHERE\\s+(\\w+)\\s*=",
+            "FROM\\s+(\\w+)|JOIN\\s+(\\w+)|WHERE\\s+.*?(\\w+)\\s*[=<>]|AND\\s+.*?(\\w+)\\s*[=<>]|OR\\s+.*?(\\w+)\\s*[=<>]",
             Pattern.CASE_INSENSITIVE
     );
 
@@ -42,8 +42,8 @@ public class IndexSuggestionEngine {
         this.dataSource = dataSource;
     }
 
-    // Runs once every hour, after an initial 5-minute delay.
-    @Scheduled(fixedRate = 3600000, initialDelay = 300000)
+    // Runs every 2 minutes for testing, after an initial 30-second delay.
+    @Scheduled(fixedRate = 120000, initialDelay = 30000)
     @Transactional
     public void analyzeQueriesAndSuggestIndexes() {
         System.out.println("Starting scheduled query analysis for index suggestions...");
@@ -61,6 +61,7 @@ public class IndexSuggestionEngine {
 
         // 2. Parse queries to find frequently filtered columns.
         Map<String, Long> columnUsageFrequency = parseAndCountColumnUsage(queries);
+        System.out.println("Found column usage: " + columnUsageFrequency);
 
         // 3. Get all existing indexes from the database.
         Set<String> existingIndexes = getExistingIndexes();
@@ -86,13 +87,17 @@ public class IndexSuggestionEngine {
                 if (matcher.group(1) != null) { // FROM clause
                     currentTable = matcher.group(1);
                 } else if (matcher.group(2) != null) { // JOIN clause
-                    // For simplicity, we'll associate WHERE clauses with the last seen table.
-                    // A more advanced parser could handle aliases.
                     currentTable = matcher.group(2);
-                } else if (matcher.group(3) != null && currentTable != null) { // WHERE clause
-                    String column = matcher.group(3);
-                    String key = currentTable.toLowerCase() + "." + column.toLowerCase();
-                    frequencyMap.put(key, frequencyMap.getOrDefault(key, 0L) + 1);
+                } else if (currentTable != null) { // WHERE/AND/OR clause
+                    String column = null;
+                    if (matcher.group(3) != null) column = matcher.group(3);
+                    else if (matcher.group(4) != null) column = matcher.group(4);
+                    else if (matcher.group(5) != null) column = matcher.group(5);
+                    
+                    if (column != null) {
+                        String key = currentTable.toLowerCase() + "." + column.toLowerCase();
+                        frequencyMap.put(key, frequencyMap.getOrDefault(key, 0L) + 1);
+                    }
                 }
             }
         }
@@ -138,9 +143,10 @@ public class IndexSuggestionEngine {
             String tableAndColumn = entry.getKey();
             long usageCount = entry.getValue();
 
-            // Suggest an index if a column is used in a WHERE clause more than 10 times
+            // Suggest an index if a column is used in a WHERE clause more than 2 times
             // and is not already indexed, and we haven't suggested it before.
-            if (usageCount > 10 && !existingIndexes.contains(tableAndColumn) && !alreadySuggested.contains(tableAndColumn)) {
+            if (usageCount > 2 && !existingIndexes.contains(tableAndColumn) && !alreadySuggested.contains(tableAndColumn)) {
+                System.out.println("Creating suggestion for: " + tableAndColumn + " (used " + usageCount + " times)");
                 String[] parts = tableAndColumn.split("\\.");
                 String tableName = parts[0];
                 String columnName = parts[1];
