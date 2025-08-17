@@ -85,4 +85,46 @@ public class GeminiNLPService implements NLPService {
 
         return "ERROR: No valid SQL was returned from the AI service.";
     }
+
+    @Override
+    public String explainSQL(String sqlQuery) {
+        // This prompt is specifically designed to get a business-friendly summary.
+        String prompt = """
+                You are a helpful database assistant who explains SQL queries in simple terms.
+                Given the following SQL query, explain what it does in easy-to-understand business terms.
+                Assume the user is non-technical. Do not explain the SQL syntax (like what SELECT or JOIN means).
+                Provide a concise, one or two-sentence summary.
+
+                ### SQL Query:
+                %s
+                """.formatted(sqlQuery);
+
+        // 2. --- Build the Request Body ---
+        var requestBody = new GeminiRequest(
+                List.of(new Content(List.of(new Part(prompt))))
+        );
+
+        try {
+            // 3. --- Make the API Call (Identical logic to convertToSQL) ---
+            GeminiResponse response = webClient.post()
+                    .uri(apiUrl)
+                    .header("x-goog-api-key", apiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(requestBody)
+                    .retrieve()
+                    .bodyToMono(GeminiResponse.class)
+                    .block();
+
+            // 4. --- Parse and Return the Response ---
+            if (response != null && response.candidates() != null && !response.candidates().isEmpty()) {
+                return response.candidates().get(0).content().parts().get(0).text().trim();
+            }
+
+        } catch (Exception e) {
+            System.err.println("Error calling Gemini API for explanation: " + e.getMessage());
+            return "ERROR: Could not get an explanation from the AI service.";
+        }
+
+        return "ERROR: No valid explanation was returned from the AI service.";
+    }
 }

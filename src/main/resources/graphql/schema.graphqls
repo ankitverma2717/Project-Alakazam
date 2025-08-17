@@ -10,10 +10,22 @@ type QueryHistory {
 # This defines the queries (read operations) our API supports
 type Query {
     allQueryHistory: [QueryHistory]
+    allIndexSuggestions: [IndexSuggestion]
 }
 
 # This defines the mutations (write operations) our API supports
 type Mutation {
     # We will implement this later
     submitQuery(naturalLanguageQuery: String!): QueryHistory
+    explainQuery(sql: String!): String
+}
+
+# --- ADD THE NEW TYPE DEFINITION BELOW ---
+type IndexSuggestion {
+    id: ID!
+    tableName: String!
+    columnNames: [String]!
+    suggestionReason: String
+    impactScore: Float
+    createdAt: String!
 }
