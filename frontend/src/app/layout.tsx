@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-    title: "QueryMaster AI",
+    title: "Project Alakazam",
     description: "Smart SQL Query Generator & Optimizer",
 };
 

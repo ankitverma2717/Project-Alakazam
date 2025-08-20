@@ -15,13 +15,32 @@ const SUBMIT_QUERY_MUTATION = gql`
     }
 `;
 
+const EXPLAIN_QUERY_MUTATION = gql`
+    mutation ExplainQuery($sql: String!) {
+        explainQuery(sql: $sql)
+    }
+`;
+
 export default function QueryInterface() {
     const [query, setQuery] = useState('');
+    const [explanation, setExplanation] = useState('');
     const [submitQuery, { data, loading, error }] = useMutation(SUBMIT_QUERY_MUTATION);
+    const [explainQuery, { loading: explaining }] = useMutation(EXPLAIN_QUERY_MUTATION, {
+        onCompleted: (data) => {
+            setExplanation(data.explainQuery);
+        },
+    });
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setExplanation(''); // Clear previous explanation
         submitQuery({ variables: { naturalLanguageQuery: query } });
+    };
+
+    const handleExplain = () => {
+        if (data && data.submitQuery.generatedSql) {
+            explainQuery({ variables: { sql: data.submitQuery.generatedSql } });
+        }
     };
 
     const getPerformanceColor = (performance: string) => {
@@ -69,18 +88,35 @@ export default function QueryInterface() {
                 <div className="bg-gray-800 text-white p-4 rounded-md shadow-lg mt-6">
                     <div className="flex justify-between items-center mb-2">
                         <h3 className="text-lg font-bold">Generated SQL:</h3>
-                        <div className="text-sm">
-                            <span>Predicted Performance: </span>
-                            <span className={getPerformanceColor(data.submitQuery.predictedPerformance)}>
-                                {data.submitQuery.predictedPerformance}
-                            </span>
-                            <span className="mx-2">|</span>
-                            <span>Execution Time: {data.submitQuery.executionTimeMs} ms</span>
+                        <div className="flex items-center">
+                            <div className="text-sm mr-4">
+                                <span>Predicted Performance: </span>
+                                <span className={getPerformanceColor(data.submitQuery.predictedPerformance)}>
+                                    {data.submitQuery.predictedPerformance}
+                                </span>
+                                <span className="mx-2">|</span>
+                                <span>Execution Time: {data.submitQuery.executionTimeMs} ms</span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleExplain}
+                                disabled={!data || loading || explaining}
+                                className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded text-sm focus:outline-none focus:shadow-outline disabled:bg-gray-400"
+                            >
+                                {explaining ? '...' : 'Explain'}
+                            </button>
                         </div>
                     </div>
                     <pre className="whitespace-pre-wrap">
                         <code>{data.submitQuery.generatedSql}</code>
                     </pre>
+                </div>
+            )}
+
+            {explanation && (
+                <div className="bg-gray-700 text-white p-4 rounded-md shadow-lg mt-6">
+                    <h3 className="text-lg font-bold mb-2">Explanation:</h3>
+                    <p>{explanation}</p>
                 </div>
             )}
         </div>
