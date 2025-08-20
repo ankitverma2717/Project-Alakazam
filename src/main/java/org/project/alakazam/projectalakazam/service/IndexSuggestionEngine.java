@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -93,7 +94,7 @@ public class IndexSuggestionEngine {
                     if (matcher.group(3) != null) column = matcher.group(3);
                     else if (matcher.group(4) != null) column = matcher.group(4);
                     else if (matcher.group(5) != null) column = matcher.group(5);
-                    
+
                     if (column != null) {
                         String key = currentTable.toLowerCase() + "." + column.toLowerCase();
                         frequencyMap.put(key, frequencyMap.getOrDefault(key, 0L) + 1);
@@ -145,7 +146,7 @@ public class IndexSuggestionEngine {
 
             // Suggest an index if a column is used in a WHERE clause more than 2 times
             // and is not already indexed, and we haven't suggested it before.
-            if (usageCount > 2 && !existingIndexes.contains(tableAndColumn) && !alreadySuggested.contains(tableAndColumn)) {
+            if (usageCount > 10 && !existingIndexes.contains(tableAndColumn) && !alreadySuggested.contains(tableAndColumn)) {
                 System.out.println("Creating suggestion for: " + tableAndColumn + " (used " + usageCount + " times)");
                 String[] parts = tableAndColumn.split("\\.");
                 String tableName = parts[0];
@@ -162,11 +163,11 @@ public class IndexSuggestionEngine {
         return suggestions;
     }
 
-    private double calculateImpactScore(long usageCount) {
+    private BigDecimal calculateImpactScore(long usageCount) {
         // Simple scoring logic: more usage = higher impact. Capped at 1.0.
-        if (usageCount > 100) return 1.0;
-        if (usageCount > 50) return 0.75;
-        if (usageCount > 20) return 0.5;
-        return 0.25;
+        if (usageCount > 100) return new BigDecimal("1.00");
+        if (usageCount > 50) return new BigDecimal("0.75");
+        if (usageCount > 20) return new BigDecimal("0.50");
+        return new BigDecimal("0.25");
     }
 }

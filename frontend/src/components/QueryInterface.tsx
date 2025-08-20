@@ -1,30 +1,40 @@
-'use client'; // This is a Client Component, as it uses state and handles events
+'use client';
 
 import { useState } from 'react';
 import { gql, useMutation } from '@apollo/client';
 
-// Define the GraphQL mutation. This must match the name in your backend schema.
 const SUBMIT_QUERY_MUTATION = gql`
     mutation SubmitQuery($naturalLanguageQuery: String!) {
         submitQuery(naturalLanguageQuery: $naturalLanguageQuery) {
             id
             naturalLanguageQuery
             generatedSql
+            predictedPerformance
+            executionTimeMs
         }
     }
 `;
 
 export default function QueryInterface() {
-    // State to hold the user's input
     const [query, setQuery] = useState('');
-
-    // The useMutation hook from Apollo Client
     const [submitQuery, { data, loading, error }] = useMutation(SUBMIT_QUERY_MUTATION);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        // Call the mutation function with the user's query as a variable
         submitQuery({ variables: { naturalLanguageQuery: query } });
+    };
+
+    const getPerformanceColor = (performance: string) => {
+        switch (performance) {
+            case 'Fast':
+                return 'text-green-400';
+            case 'Moderate':
+                return 'text-yellow-400';
+            case 'Complex':
+                return 'text-red-400';
+            default:
+                return 'text-gray-400';
+        }
     };
 
     return (
@@ -53,15 +63,24 @@ export default function QueryInterface() {
                 </div>
             </form>
 
-            {/* Display the results below the form */}
             {error && <p className="text-red-500">Error: {error.message}</p>}
 
             {data && (
                 <div className="bg-gray-800 text-white p-4 rounded-md shadow-lg mt-6">
-                    <h3 className="text-lg font-bold mb-2">Generated SQL:</h3>
+                    <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-lg font-bold">Generated SQL:</h3>
+                        <div className="text-sm">
+                            <span>Predicted Performance: </span>
+                            <span className={getPerformanceColor(data.submitQuery.predictedPerformance)}>
+                                {data.submitQuery.predictedPerformance}
+                            </span>
+                            <span className="mx-2">|</span>
+                            <span>Execution Time: {data.submitQuery.executionTimeMs} ms</span>
+                        </div>
+                    </div>
                     <pre className="whitespace-pre-wrap">
-                <code>{data.submitQuery.generatedSql}</code>
-            </pre>
+                        <code>{data.submitQuery.generatedSql}</code>
+                    </pre>
                 </div>
             )}
         </div>

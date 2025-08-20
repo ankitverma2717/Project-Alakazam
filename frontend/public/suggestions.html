@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Index Suggestions</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+
+    <div class="container mx-auto p-8">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold">Index Suggestions</h1>
+            <a href="/" class="bg-gray-800 hover:bg-gray-900 text-white font-bold py-2 px-4 rounded">Back to Home</a>
+        </div>
+
+        <div id="suggestions-container" class="bg-white shadow-lg rounded-lg p-8">
+            <!-- Suggestions will be rendered here -->
+        </div>
+    </div>
+
+    <script>
+        async function fetchSuggestions() {
+            const response = await fetch('/graphql', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    query: `
+                        query AllIndexSuggestions {
+                            allIndexSuggestions {
+                                id
+                                tableName
+                                columnNames
+                                suggestionReason
+                                impactScore
+                            }
+                        }
+                    `
+                })
+            });
+
+            const result = await response.json();
+            const suggestions = result.data.allIndexSuggestions;
+            const container = document.getElementById('suggestions-container');
+
+            if (suggestions.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500">No index suggestions available at the moment. Run some queries and check back later.</p>';
+                return;
+            }
+
+            const table = document.createElement('table');
+            table.className = 'min-w-full divide-y divide-gray-200 shadow-md rounded-lg';
+            table.innerHTML = `
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Table Name</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Column Names</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Impact Score</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    ${suggestions.map(suggestion => `
+                        <tr class="hover:bg-gray-100">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${suggestion.tableName}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${suggestion.columnNames.join(', ')}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${suggestion.suggestionReason}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${suggestion.impactScore}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            `;
+
+            container.innerHTML = '';
+            container.appendChild(table);
+        }
+
+        fetchSuggestions();
+    </script>
+
+</body>
+</html>

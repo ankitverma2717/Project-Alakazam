@@ -37,7 +37,6 @@ dependencies {
     testImplementation 'org.springframework.graphql:spring-graphql-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
-    implementation 'io.hypersistence:hypersistence-utils-hibernate-63:3.8.1'
 
     // We explicitly define the Flyway version. 11.0.0 is a recent version
     // that is confirmed to support PostgreSQL 17+.

@@ -1,11 +1,12 @@
 package org.project.alakazam.projectalakazam.domain;
 
-import io.hypersistence.utils.hibernate.type.array.ListArrayType;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.Type;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -22,7 +23,7 @@ public class IndexSuggestion {
     @Column(name = "table_name", nullable = false)
     private String tableName;
 
-    @Type(ListArrayType.class)
+    @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "column_names", nullable = false, columnDefinition = "text[]")
     private List<String> columnNames;
 
@@ -30,7 +31,7 @@ public class IndexSuggestion {
     private String suggestionReason;
 
     @Column(name = "impact_score")
-    private Double impactScore;
+    private BigDecimal impactScore;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
